@@ -11,14 +11,14 @@ from torch.utils import data
 from collections import defaultdict
 import math
 import logging
-import datasets.cityscapes_labels as cityscapes_labels
+import datasets.SUN_labels as SUN_labels
 import json
 from config import cfg
 import torchvision.transforms as transforms
 import datasets.edge_utils as edge_utils
 
-trainid_to_name = cityscapes_labels.trainId2name
-id_to_trainid = cityscapes_labels.label2trainid
+trainid_to_name = SUN_labels.trainId2name
+id_to_trainid = SUN_labels.label2trainid
 num_classes = 19
 ignore_label = 255
 root = cfg.DATASET.CITYSCAPES_DIR
@@ -29,6 +29,7 @@ palette = [128, 64, 128, 244, 35, 232, 70, 70, 70, 102, 102, 156, 190, 153, 153,
            255, 0, 0, 0, 0, 142, 0, 0, 70,
            0, 60, 100, 0, 80, 100, 0, 0, 230, 119, 11, 32]
 zero_pad = 256 * 3 - len(palette)
+
 for i in range(zero_pad):
     palette.append(0)
 
@@ -142,12 +143,12 @@ def make_dataset(quality, mode, maxSkip=0, fine_coarse_mult=6, cv_split=0):
                 add_items(items, aug_items, cv_splits[cv_split][mode], img_path, mask_path,
                       mask_postfix, mode, maxSkip)
     else:
-        raise 'unknown cityscapes quality {}'.format(quality)
-    logging.info('Cityscapes-{}: {} images'.format(mode, len(items)+len(aug_items)))
+        raise 'unknown sun quality {}'.format(quality)
+    logging.info('Sun-{}: {} images'.format(mode, len(items)+len(aug_items)))
     return items, aug_items
 
 
-class CityScapes(data.Dataset):
+class Sun(data.Dataset):
 
     def __init__(self, quality, mode, maxSkip=0, joint_transform=None, sliding_crop=None,
                  transform=None, target_transform=None, dump_images=False,
@@ -260,7 +261,7 @@ def make_dataset_video():
     return items
 
 
-class CityScapesVideo(data.Dataset):
+class SunVideo(data.Dataset):
 
     def __init__(self, transform=None):
         self.imgs = make_dataset_video()

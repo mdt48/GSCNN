@@ -27,7 +27,7 @@ import optimizer
 parser = argparse.ArgumentParser(description='GSCNN')
 parser.add_argument('--lr', type=float, default=0.01)
 parser.add_argument('--arch', type=str, default='network.gscnn.GSCNN')
-parser.add_argument('--dataset', type=str, default='sun')
+parser.add_argument('--dataset', type=str, default='cityscapes')
 parser.add_argument('--cv', type=int, default=0,
                     help='cross validation split')
 parser.add_argument('--joint_edgeseg_loss', action='store_true', default=True,
