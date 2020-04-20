@@ -19,7 +19,7 @@ import datasets.edge_utils as edge_utils
 
 trainid_to_name = SUN_labels.trainId2name
 id_to_trainid = SUN_labels.label2trainid
-num_classes = 19
+num_classes = 1012
 ignore_label = 255
 root = cfg.DATASET.CITYSCAPES_DIR
 
@@ -28,7 +28,14 @@ palette = [128, 64, 128, 244, 35, 232, 70, 70, 70, 102, 102, 156, 190, 153, 153,
            220, 220, 0, 107, 142, 35, 152, 251, 152, 70, 130, 180, 220, 20, 60,
            255, 0, 0, 0, 0, 142, 0, 0, 70,
            0, 60, 100, 0, 80, 100, 0, 0, 230, 119, 11, 32]
-zero_pad = 256 * 3 - len(palette)
+
+import colorsys
+N = len(classes)
+HSV_TUPLES =[(x*1.0/N, 0.5, 0.5) for x in range(N)]
+RGB_TUPLES = map(lambda x: colorsys.hsv_to_rgb(*x), HSV_TUPLES)
+palette = list(RGB_TUPLES)
+
+#zero_pad = 256 * 3 - len(palette)
 
 for i in range(zero_pad):
     palette.append(0)
