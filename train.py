@@ -19,6 +19,7 @@ import numpy as np
 from utils.misc import AverageMeter, prep_experiment, evaluate_eval, fast_hist
 from utils.f_boundary import eval_mask_boundary
 import datasets
+datasets.path.insert(0, "/pless_nfs/home/mdt_/GSCNN/datasets")
 import loss
 import network
 import optimizer
