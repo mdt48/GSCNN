@@ -19,7 +19,6 @@ import numpy as np
 from utils.misc import AverageMeter, prep_experiment, evaluate_eval, fast_hist
 from utils.f_boundary import eval_mask_boundary
 import datasets
-datasets.path.insert(0, "/pless_nfs/home/mdt_/GSCNN/datasets")
 import loss
 import network
 import optimizer
@@ -28,7 +27,7 @@ import optimizer
 parser = argparse.ArgumentParser(description='GSCNN')
 parser.add_argument('--lr', type=float, default=0.01)
 parser.add_argument('--arch', type=str, default='network.gscnn.GSCNN')
-parser.add_argument('--dataset', type=str, default='sun')
+parser.add_argument('--dataset', type=str, default='ade20k')
 parser.add_argument('--cv', type=int, default=0,
                     help='cross validation split')
 parser.add_argument('--joint_edgeseg_loss', action='store_true', default=True,
@@ -134,7 +133,6 @@ def main():
     optim, scheduler = optimizer.get_optimizer(args, net)
 
     torch.cuda.empty_cache()
-
     if args.evaluate:
         # Early evaluation for benchmarking
         default_eval_epoch = 1
@@ -176,7 +174,6 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, writer):
     train_att_loss = AverageMeter()
     train_dual_loss = AverageMeter()
     curr_iter = curr_epoch * len(train_loader)
-
     for i, data in enumerate(train_loader):
         if i==0:
             print('running....')
