@@ -167,7 +167,7 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, writer):
     return: val_avg for step function if required
     '''
     net.train()
-
+    print(type(net))
     train_main_loss = AverageMeter()
     train_edge_loss = AverageMeter()
     train_seg_loss = AverageMeter()
@@ -194,10 +194,11 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, writer):
 
         main_loss = None
         loss_dict = None
-
+        
         if args.joint_edgeseg_loss:
+            # print("Module: " + net.__module__)
             loss_dict = net(inputs, gts=(mask, edge))
-            
+            print("got here lmao")
             if args.seg_weight > 0:
                 log_seg_loss = loss_dict['seg_loss'].mean().clone().detach_()
                 train_seg_loss.update(log_seg_loss.item(), batch_pixel_size)

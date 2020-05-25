@@ -96,7 +96,7 @@ with open("output.csv") as merged:
             continue
         name = row[8]
         i = row[3]
-        m = interp1d([1,11664],[5,10])
+        m = interp1d([1,11664],[0,255])
         tid = int(row[5])
         x = int(m(tid))
         color = (row[0],row[1],row[2])

@@ -25,9 +25,10 @@ import time
 from tqdm import tqdm
 import bisect
 import csv
+import faulthandler
 trainid_to_name = ade20k_labels.trainId2name
 id_to_trainid = ade20k_labels.label2trainid
-num_classes = 1012
+num_classes = 150
 ignore_label = 255
 root = cfg.DATASET.CITYSCAPES_DIR
 palette = []
@@ -38,11 +39,6 @@ with open("output.csv") as merged:
         palette.append(row[1])
         palette.append(row[2])
 
-import colorsys
-N = 1012
-HSV_TUPLES =[(x*1.0/N, 0.5, 0.5) for x in range(N)]
-RGB_TUPLES = map(lambda x: colorsys.hsv_to_rgb(*x), HSV_TUPLES)
-palette = list(RGB_TUPLES)
 
 zero_pad = 256 * 3 - len(palette)
 
@@ -70,15 +66,12 @@ def find_match(cities, mode):
     elif mode == "val":
         c = "validation"
     segm_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/" + c
-    segm_imgs = [f.as_posix() for f in Path(segm_path).glob("**/*.png") if "seg" in f.as_posix()]
-    
-    
-    print("Done! Pickle/unpickle")
+    segm_imgs = [f.as_posix() for f in Path(segm_path).glob("**/*.png") if "seg" in f.as_posix() and c in f.as_posix()]
     
     
     from  builtins import any as b_any
     result = []
-
+    result_seg = []
     import os
     import subprocess
     if os.path.exists("./tp.pickle"):
@@ -88,29 +81,15 @@ def find_match(cities, mode):
         for img in range(len(cities)):  
             matching = []
             fn = (os.path.splitext(os.path.basename(cities[img]))[0]).split("_", 2)[2]
+            q = 0
             for msk in segm_imgs:
                 if fn in msk:
-                    print("Matched")
-                    cim = cv2.imread(cities[img], 1)
-                    mim = cv2.imread(msk, 1)
-                    cshape = cim.shape
-                    mshape = mim.shape
-                    
-                    if cshape != mshape:
-                        continue
+                    q = q+1
                     tp = (cities[img], msk)
                     result.append(tp)
-    # print("-------------------------")
-    # print(result)
-    #logging.info('matched: '+ str(cities))
     with open("tp.pickle", "wb+") as fp:   #Pickling   
         pickle.dump(result, fp)
-    logging.info(str(result))
-    logging.info('Mask Images Found: '+ str(len(segm_imgs)))
-    logging.info('Train Images: '+ str(len(cities)))
-    logging.info('matched: '+ str(len(result)))
-    logging.info('C: '+ c)
-    
+
     return result
 
 def sorter(val):
@@ -150,7 +129,6 @@ def make_cv_splits(img_dir_name):
     '''
     trn_path = os.path.join(root, img_dir_name, 'training')
     val_path = os.path.join(root, img_dir_name, 'validation')
-    al = []
     t = []
     v =[]
     if os.path.exists("./tr.pickle") and os.path.exists("./val.pickle"):
@@ -161,36 +139,34 @@ def make_cv_splits(img_dir_name):
             v = pickle.load(fp)
     else:
         train_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/training"
-        train_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/validation"
-        t = [f.as_posix() for f in Path(train_path).glob("**/*.jpg") ]
-        v = [f.as_posix() for f in Path(train_path).glob("**/*.jpg")]
+        v_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/validation"
+        t = [f.as_posix() for f in Path(train_path).glob("**/*.jpg")]
+        v = [f.as_posix() for f in Path(v_path).glob("**/*.jpg")]
         with open("tr.pickle", "wb+") as fp:   #Pickling   
             pickle.dump(t, fp)
         with open("val.pickle", "wb+") as fp:   #Pickling   
             pickle.dump(v, fp)
-    
-    # print(trn_cities)
-    # print(val_cities)
-    # want reproducible randomly shuffled
     trn_cities = sorted(t)
 
     all_cities = t + v
     num_val_cities = len(v)
     num_cities = len(all_cities)
-    
+    num_t_cities = len(t)
+
+    t = np.array_split(np.array(t), cfg.DATASET.CV_SPLITS)
+    v = np.array_split(np.array(v), cfg.DATASET.CV_SPLITS)
+
     cv_splits = []
     for split_idx in range(cfg.DATASET.CV_SPLITS):
         split = {}
         split['train'] = []
         split['val'] = []
-        offset = split_idx * num_cities // cfg.DATASET.CV_SPLITS
-        for j in range(num_cities):
-            if j >= offset and j < (offset + num_val_cities):
-                split['val'].append(all_cities[j])
-            else:
-                split['train'].append(all_cities[j])
+        split['val'].extend(v[split_idx].tolist())
+        split['train'].extend(t[split_idx].tolist())
         cv_splits.append(split)
 
+    
+    
     return cv_splits
 
 
@@ -247,6 +223,7 @@ def make_dataset(quality, mode, maxSkip=0, fine_coarse_mult=6, cv_split=0):
                 items = add_items(items, cv_splits, img_path, mask_path,
                       mask_postfix)
             else:
+                print(cv_split)
                 logging.info('{} fine cities: '.format(mode) + str(len(cv_splits[cv_split][mode])))
 
                 items = add_items(items, aug_items, cv_splits[cv_split][mode], img_path, mask_path,
@@ -309,10 +286,11 @@ class ade20k(data.Dataset):
 
 
     def __getitem__(self, index):
+        faulthandler.enable()
 
         img_path, mask_path = self.imgs[index]
 
-        img, mask = Image.open(img_path).convert('RGB'), Image.open(mask_path)
+        img, mask = Image.open(img_path).convert('RGB'), Image.open(mask_path).convert('LA')
         img_name = os.path.splitext(os.path.basename(img_path))[0]
 
         mask = np.array(mask)
@@ -334,8 +312,8 @@ class ade20k(data.Dataset):
             mask = self.target_transform(mask)
 
         _edgemap = mask.numpy()
+        _edgemap = _edgemap[:, :, 0]
         _edgemap = edge_utils.mask_to_onehot(_edgemap, num_classes)
-
         _edgemap = edge_utils.onehot_to_binary_edges(_edgemap, 2, num_classes)
 
         edgemap = torch.from_numpy(_edgemap).float()
