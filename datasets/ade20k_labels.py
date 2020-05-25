@@ -32,7 +32,7 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 """
 
 from collections import namedtuple
-
+import csv
 
 #--------------------------------------------------------------------------------
 # Definitions
@@ -75,60 +75,33 @@ Label = namedtuple( 'Label' , [
     'color'       , # The color of this label
     ] )
 
+
 #--------------------------------------------------------------------------------
-# SUN Labels
+# A list of all labels
 #--------------------------------------------------------------------------------
-import os
-import numpy as np
 
-scenes = ["alcove", "atrium home", "attic", "barrack", "basemaent", "bathouse", "bathroom", 
-            "bedroom", "berth deck", "bow window indoor", "cabin indoor", "childs room", "closet",
-            "dinette home", "dorm room", "dining room", "furnace room", "game room", "garage indoor",
-            "home office", "home theater", "hotel room", "kitchen", "kitchenette", "lavatory",
-            "living room" , "loft", "nursery", "parlor", "playroom", "poolroom home", "recreation room",
-            "restaurant kitchen", "root cellar", "shower", "shower room", "staircase", "television room",
-            "hotel", "hotel_room", "house"]
+# Please adapt the train IDs as appropriate for you approach.
+# Note that you might want to ignore labels with ID 255 during training.
+# Further note that the current train IDs are only a suggestion. You can use whatever you like.
+# Make sure to provide your results using the original IDs and not the training IDs.
+# Note that many IDs are ignored in evaluation and thus you never need to predict these!
 
-path = "./SUN2012/Annotations"
+labels = []
 
-img_xml = []
-
-for root, dirs, files in os.walk(path):
-    for d in dirs:   
-        if d in scenes:
-            new_path = os.path.join(root, d)
-            img_xml = [os.path.join(new_path, f) for f in os.listdir(new_path)]
-
-import xml.etree.ElementTree as ET
-classes = []
-for xml in img_xml:
-    tree = ET.parse(xml)
-    root = tree.getroot()
-
-    for child in root:
-        child_nodes = {x.text for x in root.findall(child.tag+"/*") if x.tag == "name"}
-        #print(child_nodes)
-        for n in child_nodes:
-            if n.strip() not in classes:
-                classes.append(n.strip())
-
-import math
-from PIL import Image
-im = Image.new('RGB', (604, 62))
-ld = im.load()
-
-def gaussian(x, a, b, c, d=0):
-    return a * math.exp(-(x - b)**2 / (2 * c**2)) + d
-
-for x in range(im.size[0]):
-    r = int(gaussian(x, 158.8242, 201, 87.0739) + gaussian(x, 158.8242, 402, 87.0739))
-    g = int(gaussian(x, 129.9851, 157.7571, 108.0298) + gaussian(x, 200.6831, 399.4535, 143.6828))
-    b = int(gaussian(x, 231.3135, 206.4774, 201.5447) + gaussian(x, 17.1017, 395.8819, 39.3148))
-    for y in range(im.size[1]):
-        ld[x, y] = (r, g, b)
-
-labels = [Label(c, idx, 255,"indoor", 0, True, False, tuple((np.random.choice(range(256), size=3)))) for idx, c in enumerate(classes)]
-
+with open("output.csv") as merged:
+    from scipy.interpolate import interp1d
+    reader = csv.reader(merged, delimiter=",")
+    for idx, row in enumerate(reader):
+        if idx == 0: 
+            continue
+        name = row[8]
+        i = row[3]
+        m = interp1d([1,11664],[0,255])
+        tid = int(row[5])
+        x = int(m(tid))
+        color = (row[0],row[1],row[2])
+        l = Label(str(name), int(idx), x, "ade20k", 0, True, True, color)
+        labels.append(l)
 #--------------------------------------------------------------------------------
 # Create dictionaries for a fast lookup
 #--------------------------------------------------------------------------------
@@ -192,17 +165,17 @@ def assureSingleInstanceName( name ):
 # just a dummy main
 if __name__ == "__main__":
     # Print all the labels
-    print("List of sun labels:")
+    print("List of cityscapes labels:")
     print("")
-    print(("    {:>21} | {:>3} | {:>7} | {:>14} | {:>10} | {:>12} | {:>12}".format( 'name', 'id', 'trainId', 'category', 'categoryId', 'hasInstances', 'ignoreInEval' )))
+    print(("    {:>21} | {:>3} | {:>7} | {:>14} | {:>10} | {:>12} | {:>12}".format( 'name', 'id', 'trainId', 'category', 'categoryId', 'hasInstances', 'ignoreInEval', "color" )))
     print(("    " + ('-' * 98)))
     for label in labels:
-        print(("    {:>21} | {:>3} | {:>7} | {:>14} | {:>10} | {:>12} | {:>12}".format( label.name, label.id, label.trainId, label.category, label.categoryId, label.hasInstances, label.ignoreInEval )))
+        print(("    {:>21} | {:>3} | {:>7} | {:>14} | {:>10} | {:>12} | {:>12}".format( label.name, label.id, label.trainId, label.category, label.categoryId, label.hasInstances, label.ignoreInEval, label.color )))
     print("")
 
     # print("Example usages:")
 
-    # Map from name to label
+    # # Map from name to label
     # name = 'car'
     # id   = name2label[name].id
     # print(("ID of label '{name}': {id}".format( name=name, id=id )))

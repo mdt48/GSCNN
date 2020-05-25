@@ -62,8 +62,8 @@ __C.REDUCE_BORDER_EPOCH= -1
 __C.STRICTBORDERCLASS= None
 
 __C.DATASET =AttrDict()
-__C.DATASET.CITYSCAPES_DIR='/pless_nfs/home/mdt_/GSCNN/SUN2012/Images'
-__C.DATASET.CV_SPLITS=3
+__C.DATASET.CITYSCAPES_DIR='/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26'
+__C.DATASET.CV_SPLITS=4
 
 __C.MODEL = AttrDict()
 __C.MODEL.BN = 'regularnorm'
@@ -85,7 +85,7 @@ def assert_and_infer_cfg(args, make_immutable=True):
     if args.syncbn:
         import encoding
         __C.MODEL.BN = 'syncnorm'
-        __C.MODEL.BNFUNC = encoding.nn.BatchNorm2d
+        __C.MODEL.BNFUNC = encoding.nn.SyncBatchNorm
     else:
         __C.MODEL.BNFUNC = torch.nn.BatchNorm2d
         print('Using regular batch norm')

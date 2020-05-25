@@ -19,7 +19,6 @@ import numpy as np
 from utils.misc import AverageMeter, prep_experiment, evaluate_eval, fast_hist
 from utils.f_boundary import eval_mask_boundary
 import datasets
-datasets.path.insert(0, "/pless_nfs/home/mdt_/GSCNN/datasets")
 import loss
 import network
 import optimizer
@@ -28,7 +27,7 @@ import optimizer
 parser = argparse.ArgumentParser(description='GSCNN')
 parser.add_argument('--lr', type=float, default=0.01)
 parser.add_argument('--arch', type=str, default='network.gscnn.GSCNN')
-parser.add_argument('--dataset', type=str, default='sun')
+parser.add_argument('--dataset', type=str, default='ade20k')
 parser.add_argument('--cv', type=int, default=0,
                     help='cross validation split')
 parser.add_argument('--joint_edgeseg_loss', action='store_true', default=True,
@@ -134,7 +133,6 @@ def main():
     optim, scheduler = optimizer.get_optimizer(args, net)
 
     torch.cuda.empty_cache()
-
     if args.evaluate:
         # Early evaluation for benchmarking
         default_eval_epoch = 1
@@ -169,14 +167,13 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, writer):
     return: val_avg for step function if required
     '''
     net.train()
-
+    print(type(net))
     train_main_loss = AverageMeter()
     train_edge_loss = AverageMeter()
     train_seg_loss = AverageMeter()
     train_att_loss = AverageMeter()
     train_dual_loss = AverageMeter()
     curr_iter = curr_epoch * len(train_loader)
-
     for i, data in enumerate(train_loader):
         if i==0:
             print('running....')
@@ -197,10 +194,11 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, writer):
 
         main_loss = None
         loss_dict = None
-
+        
         if args.joint_edgeseg_loss:
+            # print("Module: " + net.__module__)
             loss_dict = net(inputs, gts=(mask, edge))
-            
+            print("got here lmao")
             if args.seg_weight > 0:
                 log_seg_loss = loss_dict['seg_loss'].mean().clone().detach_()
                 train_seg_loss.update(log_seg_loss.item(), batch_pixel_size)

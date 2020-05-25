@@ -11,23 +11,35 @@ from torch.utils import data
 from collections import defaultdict
 import math
 import logging
-import datasets.SUN_labels as SUN_labels
+import datasets.ade20k_labels as ade20k_labels
 import json
 from config import cfg
 import torchvision.transforms as transforms
 import datasets.edge_utils as edge_utils
+import cv2
+import os
+from pathlib import Path
+import pickle
 
-trainid_to_name = SUN_labels.trainId2name
-id_to_trainid = SUN_labels.label2trainid
-num_classes = 19
+import time
+from tqdm import tqdm
+import bisect
+import csv
+import faulthandler
+trainid_to_name = ade20k_labels.trainId2name
+id_to_trainid = ade20k_labels.label2trainid
+num_classes = 150
 ignore_label = 255
 root = cfg.DATASET.CITYSCAPES_DIR
+palette = []
+with open("output.csv") as merged:
+    reader = csv.reader(merged, delimiter=",")
+    for idx, row in enumerate(reader):
+        palette.append(row[0])
+        palette.append(row[1])
+        palette.append(row[2])
 
-palette = [128, 64, 128, 244, 35, 232, 70, 70, 70, 102, 102, 156, 190, 153, 153,
-           153, 153, 153, 250, 170, 30,
-           220, 220, 0, 107, 142, 35, 152, 251, 152, 70, 130, 180, 220, 20, 60,
-           255, 0, 0, 0, 0, 142, 0, 0, 70,
-           0, 60, 100, 0, 80, 100, 0, 0, 230, 119, 11, 32]
+
 zero_pad = 256 * 3 - len(palette)
 
 for i in range(zero_pad):
@@ -42,14 +54,72 @@ def colorize_mask(mask):
 
 
 def add_items(items, aug_items, cities, img_path, mask_path, mask_postfix, mode, maxSkip):
+    items = find_match(cities, mode)
+    return items
+    
 
-    for c in cities:
-        c_items = [name.split('_leftImg8bit.png')[0] for name in
-                   os.listdir(os.path.join(img_path, c))]
-        for it in c_items:
-            item = (os.path.join(img_path, c, it + '_leftImg8bit.png'),
-                        os.path.join(mask_path, c, it + mask_postfix))
-            items.append(item)
+def find_match(cities, mode): 
+    segm_imgs = []
+    c=""
+    if mode == "train":
+        c = "training"
+    elif mode == "val":
+        c = "validation"
+    segm_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/" + c
+    segm_imgs = [f.as_posix() for f in Path(segm_path).glob("**/*.png") if "seg" in f.as_posix() and c in f.as_posix()]
+    
+    
+    from  builtins import any as b_any
+    result = []
+    result_seg = []
+    import os
+    import subprocess
+    if os.path.exists("./tp.pickle"):
+        with open("tp.pickle", "rb") as fp:
+            result = pickle.load(fp)
+    else:
+        for img in range(len(cities)):  
+            matching = []
+            fn = (os.path.splitext(os.path.basename(cities[img]))[0]).split("_", 2)[2]
+            q = 0
+            for msk in segm_imgs:
+                if fn in msk:
+                    q = q+1
+                    tp = (cities[img], msk)
+                    result.append(tp)
+    with open("tp.pickle", "wb+") as fp:   #Pickling   
+        pickle.dump(result, fp)
+
+    return result
+
+def sorter(val):
+    return os.path.splitext(os.path.basename(val))[0]
+
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = printEnd)
+    # Print New Line on Complete
+    if iteration == total: 
+        print()
+
+def binary_search(Array, Search_Term):
+    n = len(Array)
+    L = 0
+    R = n-1
+
+    Search_Term = int(sorter(Search_Term))
+    
+    while L <= R:
+        mid = ((L+R)//2)
+        if int(sorter(Array[mid])) < Search_Term:
+            L = mid + 1
+        elif int(sorter(Array[mid])) > Search_Term:
+            R = mid - 1
+        else:
+            return mid
+    return -1
 
 def make_cv_splits(img_dir_name):
     '''
@@ -57,32 +127,46 @@ def make_cv_splits(img_dir_name):
     A split is a lists of cities.
     split0 is aligned with the default Cityscapes train/val.
     '''
-    trn_path = os.path.join(root, img_dir_name, 'leftImg8bit', 'train')
-    val_path = os.path.join(root, img_dir_name, 'leftImg8bit', 'val')
+    trn_path = os.path.join(root, img_dir_name, 'training')
+    val_path = os.path.join(root, img_dir_name, 'validation')
+    t = []
+    v =[]
+    if os.path.exists("./tr.pickle") and os.path.exists("./val.pickle"):
+        with open("tr.pickle", "rb") as fp:
+            print("retirieved pickle for train")
+            t = pickle.load(fp)
+        with open("val.pickle", "rb") as fp:
+            v = pickle.load(fp)
+    else:
+        train_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/training"
+        v_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/validation"
+        t = [f.as_posix() for f in Path(train_path).glob("**/*.jpg")]
+        v = [f.as_posix() for f in Path(v_path).glob("**/*.jpg")]
+        with open("tr.pickle", "wb+") as fp:   #Pickling   
+            pickle.dump(t, fp)
+        with open("val.pickle", "wb+") as fp:   #Pickling   
+            pickle.dump(v, fp)
+    trn_cities = sorted(t)
 
-    trn_cities = ['train/' + c for c in os.listdir(trn_path)]
-    val_cities = ['val/' + c for c in os.listdir(val_path)]
-
-    # want reproducible randomly shuffled
-    trn_cities = sorted(trn_cities)
-
-    all_cities = val_cities + trn_cities
-    num_val_cities = len(val_cities)
+    all_cities = t + v
+    num_val_cities = len(v)
     num_cities = len(all_cities)
+    num_t_cities = len(t)
+
+    t = np.array_split(np.array(t), cfg.DATASET.CV_SPLITS)
+    v = np.array_split(np.array(v), cfg.DATASET.CV_SPLITS)
 
     cv_splits = []
     for split_idx in range(cfg.DATASET.CV_SPLITS):
         split = {}
         split['train'] = []
         split['val'] = []
-        offset = split_idx * num_cities // cfg.DATASET.CV_SPLITS
-        for j in range(num_cities):
-            if j >= offset and j < (offset + num_val_cities):
-                split['val'].append(all_cities[j])
-            else:
-                split['train'].append(all_cities[j])
+        split['val'].extend(v[split_idx].tolist())
+        split['train'].extend(t[split_idx].tolist())
         cv_splits.append(split)
 
+    
+    
     return cv_splits
 
 
@@ -91,6 +175,7 @@ def make_split_coarse(img_path):
     Create a train/val split for coarse
     return: city split in train
     '''
+    print(img_path)
     all_cities = os.listdir(img_path)
     all_cities = sorted(all_cities)  # needs to always be the same
     val_cities = [] # Can manually set cities to not be included into train split
@@ -123,9 +208,9 @@ def make_dataset(quality, mode, maxSkip=0, fine_coarse_mult=6, cv_split=0):
 
     if quality == 'fine':
         assert mode in ['train', 'val', 'test', 'trainval']
-        img_dir_name = 'leftImg8bit_trainvaltest'
-        img_path = os.path.join(root, img_dir_name, 'leftImg8bit')
-        mask_path = os.path.join(root, 'gtFine_trainvaltest', 'gtFine')
+        img_dir_name = 'Hotels-50k'
+        img_path = os.path.join(root, img_dir_name)
+        mask_path = os.path.join(root, 'annotations', 'h', 'hotel')
         mask_postfix = '_gtFine_labelIds.png'
         cv_splits = make_cv_splits(img_dir_name)
         if mode == 'trainval':
@@ -135,12 +220,13 @@ def make_dataset(quality, mode, maxSkip=0, fine_coarse_mult=6, cv_split=0):
         for mode in modes:
             if mode == 'test':
                 cv_splits = make_test_split(img_dir_name)
-                add_items(items, cv_splits, img_path, mask_path,
+                items = add_items(items, cv_splits, img_path, mask_path,
                       mask_postfix)
             else:
-                logging.info('{} fine cities: '.format(mode) + str(cv_splits[cv_split][mode]))
+                print(cv_split)
+                logging.info('{} fine cities: '.format(mode) + str(len(cv_splits[cv_split][mode])))
 
-                add_items(items, aug_items, cv_splits[cv_split][mode], img_path, mask_path,
+                items = add_items(items, aug_items, cv_splits[cv_split][mode], img_path, mask_path,
                       mask_postfix, mode, maxSkip)
     else:
         raise 'unknown sun quality {}'.format(quality)
@@ -148,7 +234,7 @@ def make_dataset(quality, mode, maxSkip=0, fine_coarse_mult=6, cv_split=0):
     return items, aug_items
 
 
-class Sun(data.Dataset):
+class ade20k(data.Dataset):
 
     def __init__(self, quality, mode, maxSkip=0, joint_transform=None, sliding_crop=None,
                  transform=None, target_transform=None, dump_images=False,
@@ -200,10 +286,11 @@ class Sun(data.Dataset):
 
 
     def __getitem__(self, index):
+        faulthandler.enable()
 
         img_path, mask_path = self.imgs[index]
 
-        img, mask = Image.open(img_path).convert('RGB'), Image.open(mask_path)
+        img, mask = Image.open(img_path).convert('RGB'), Image.open(mask_path).convert('LA')
         img_name = os.path.splitext(os.path.basename(img_path))[0]
 
         mask = np.array(mask)
@@ -225,8 +312,8 @@ class Sun(data.Dataset):
             mask = self.target_transform(mask)
 
         _edgemap = mask.numpy()
+        _edgemap = _edgemap[:, :, 0]
         _edgemap = edge_utils.mask_to_onehot(_edgemap, num_classes)
-
         _edgemap = edge_utils.onehot_to_binary_edges(_edgemap, 2, num_classes)
 
         edgemap = torch.from_numpy(_edgemap).float()
@@ -253,10 +340,10 @@ def make_dataset_video():
     items = []
     categories = os.listdir(img_path)
     for c in categories[1:]:
-        c_items = [name.split('_leftImg8bit.png')[0] for name in
+        c_items = [name for name in
                    os.listdir(os.path.join(img_path, c))]
         for it in c_items:
-            item = os.path.join(img_path, c, it + '_leftImg8bit.png')
+            item = os.path.join(img_path, c)
             items.append(item)
     return items
 

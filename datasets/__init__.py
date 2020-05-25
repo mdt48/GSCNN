@@ -3,7 +3,7 @@ Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
 
-from datasets import SUN
+from datasets import ade20k
 import torchvision.transforms as standard_transforms
 import torchvision.utils as vutils
 import transforms.joint_transforms as joint_transforms
@@ -11,20 +11,15 @@ import transforms.transforms as extended_transforms
 from torch.utils.data import DataLoader
 
 def setup_loaders(args):
-    '''
-    input: argument passed by the user
-    return:  training data loader, validation data loader loader,  train_set
-    '''
-
-    if args.dataset == 'sun':
-        args.dataset_cls = sun
+    if args.dataset == 'ade20k':
+        args.dataset_cls = ade20k
         args.train_batch_size = args.bs_mult * args.ngpu
         if args.bs_mult_val > 0:
             args.val_batch_size = args.bs_mult_val * args.ngpu
         else:
             args.val_batch_size = args.bs_mult * args.ngpu
     else:
-        raise
+        raise Exception("Dataset Error")
 
     args.num_workers = 4 * args.ngpu
     if args.test_mode:
@@ -77,17 +72,17 @@ def setup_loaders(args):
     
     target_train_transform = extended_transforms.MaskToTensor()
 
-    if args.dataset == 'sun':
+    if args.dataset == 'ade20k':
         city_mode = 'train' ## Can be trainval
         city_quality = 'fine'
-        train_set = args.dataset_cls.Sun(
+        train_set = args.dataset_cls.ade20k(
             city_quality, city_mode, 0, 
             joint_transform=train_joint_transform,
             transform=train_input_transform,
             target_transform=target_train_transform,
             dump_images=args.dump_augmentation_images,
             cv_split=args.cv)
-        val_set = args.dataset_cls.Sun('fine', 'val', 0, 
+        val_set = args.dataset_cls.ade20k('fine', 'val', 0, 
                                               transform=val_input_transform,
                                               target_transform=target_transform,
                                               cv_split=args.cv)
