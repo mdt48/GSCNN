@@ -65,8 +65,6 @@ def find_match(cities, mode):
         c = "training"
     elif mode == "val":
         c = "validation"
-    segm_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/" + c
-    segm_imgs = [f.as_posix() for f in Path(segm_path).glob("**/*.png") if "seg" in f.as_posix() and c in f.as_posix()]
     
     
     from  builtins import any as b_any
@@ -78,48 +76,26 @@ def find_match(cities, mode):
         with open("tp.pickle", "rb") as fp:
             result = pickle.load(fp)
     else:
-        for img in range(len(cities)):  
-            matching = []
-            fn = (os.path.splitext(os.path.basename(cities[img]))[0]).split("_", 2)[2]
+        # segm_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/" + c
+        segm_path = "../semantic-segmentation-pytorch/data/ADEChallengeData2016/annotations/" + c
+        segm_imgs = [f.as_posix() for f in Path(segm_path).glob("**/*.png") ]
+        for img in range(len(cities)): 
+            fn = cities[img]
+            p = os.path.split(fn)[0]
+            fn = os.path.basename(fn)
+            fn = fn.split(".")[0]
+            fn = fn + ".png" 
             q = 0
-            for msk in segm_imgs:
-                if fn in msk:
-                    q = q+1
-                    tp = (cities[img], msk)
-                    result.append(tp)
-    with open("tp.pickle", "wb+") as fp:   #Pickling   
-        pickle.dump(result, fp)
+            match = os.path.join(segm_path, fn)
+            if os.path.exists(match):
+                q = q+1
+                tp = (cities[img], match)
+                result.append(tp)
+        with open("tp.pickle", "wb+") as fp:   #Pickling   
+            pickle.dump(result, fp)
 
     return result
 
-def sorter(val):
-    return os.path.splitext(os.path.basename(val))[0]
-
-def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
-    print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = printEnd)
-    # Print New Line on Complete
-    if iteration == total: 
-        print()
-
-def binary_search(Array, Search_Term):
-    n = len(Array)
-    L = 0
-    R = n-1
-
-    Search_Term = int(sorter(Search_Term))
-    
-    while L <= R:
-        mid = ((L+R)//2)
-        if int(sorter(Array[mid])) < Search_Term:
-            L = mid + 1
-        elif int(sorter(Array[mid])) > Search_Term:
-            R = mid - 1
-        else:
-            return mid
-    return -1
 
 def make_cv_splits(img_dir_name):
     '''
@@ -133,18 +109,19 @@ def make_cv_splits(img_dir_name):
     v =[]
     if os.path.exists("./tr.pickle") and os.path.exists("./val.pickle"):
         with open("tr.pickle", "rb") as fp:
-            print("retirieved pickle for train")
             t = pickle.load(fp)
         with open("val.pickle", "rb") as fp:
             v = pickle.load(fp)
     else:
-        train_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/training"
-        v_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/validation"
+        train_path = "../semantic-segmentation-pytorch/data/ADEChallengeData2016/images/training/"
+        v_path = "../semantic-segmentation-pytorch/data/ADEChallengeData2016/images/validation/"
+        # train_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/training"
+        # v_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/validation"
         t = [f.as_posix() for f in Path(train_path).glob("**/*.jpg")]
         v = [f.as_posix() for f in Path(v_path).glob("**/*.jpg")]
-        with open("tr.pickle", "wb+") as fp:   #Pickling   
+        with open("tr.pickle", "wb+") as fp:    
             pickle.dump(t, fp)
-        with open("val.pickle", "wb+") as fp:   #Pickling   
+        with open("val.pickle", "wb+") as fp:   
             pickle.dump(v, fp)
     trn_cities = sorted(t)
 
@@ -223,7 +200,6 @@ def make_dataset(quality, mode, maxSkip=0, fine_coarse_mult=6, cv_split=0):
                 items = add_items(items, cv_splits, img_path, mask_path,
                       mask_postfix)
             else:
-                print(cv_split)
                 logging.info('{} fine cities: '.format(mode) + str(len(cv_splits[cv_split][mode])))
 
                 items = add_items(items, aug_items, cv_splits[cv_split][mode], img_path, mask_path,
@@ -290,13 +266,23 @@ class ade20k(data.Dataset):
 
         img_path, mask_path = self.imgs[index]
 
-        img, mask = Image.open(img_path).convert('RGB'), Image.open(mask_path).convert('LA')
+        img, mask = Image.open(img_path).convert('RGB'), Image.open(mask_path)
         img_name = os.path.splitext(os.path.basename(img_path))[0]
 
         mask = np.array(mask)
+        # mask_copy = np.zeros(mask.shape[:2])
         mask_copy = mask.copy()
         for k, v in id_to_trainid.items():
             mask_copy[mask == k] = v
+        # for k, v in ade20k_labels.trainId2color.items():
+        #     mask_copy[mask==v] = k
+
+        # for i in mask_copy:
+        #     for idx, j in np.ndenumerate(i):
+        #         if j == 0:
+        #             i[idx] = 1
+
+        mask_copy = np.ones_like(mask)
 
         if self.eval_mode:
             return self._eval_get_item(img, mask_copy, self.eval_scales, self.eval_flip), img_name
@@ -312,10 +298,10 @@ class ade20k(data.Dataset):
             mask = self.target_transform(mask)
 
         _edgemap = mask.numpy()
-        _edgemap = _edgemap[:, :, 0]
+        # _edgemap = _edgemap[:, :, 0]
+        # print(_edgemap.shape)
         _edgemap = edge_utils.mask_to_onehot(_edgemap, num_classes)
         _edgemap = edge_utils.onehot_to_binary_edges(_edgemap, 2, num_classes)
-
         edgemap = torch.from_numpy(_edgemap).float()
         
 	# Debug

@@ -100,8 +100,14 @@ with open("output.csv") as merged:
         tid = int(row[5])
         x = int(m(tid))
         color = (row[0],row[1],row[2])
-        l = Label(str(name), int(idx), x, "ade20k", 0, True, True, color)
+        l = Label(str(name), int(idx), int(idx), "ade20k", 0, True, True, color)
         labels.append(l)
+
+# import pandas as pd
+# a = pd.read_csv("colors2.csv")
+# b = pd.read_csv("objectInfor150.csv")
+
+
 #--------------------------------------------------------------------------------
 # Create dictionaries for a fast lookup
 #--------------------------------------------------------------------------------
@@ -165,13 +171,14 @@ def assureSingleInstanceName( name ):
 # just a dummy main
 if __name__ == "__main__":
     # Print all the labels
-    print("List of cityscapes labels:")
-    print("")
-    print(("    {:>21} | {:>3} | {:>7} | {:>14} | {:>10} | {:>12} | {:>12}".format( 'name', 'id', 'trainId', 'category', 'categoryId', 'hasInstances', 'ignoreInEval', "color" )))
-    print(("    " + ('-' * 98)))
+    # print("List of cityscapes labels:")
+    # print("")
+    # print(("    {:>21} | {:>3} | {:>7} | {:>14} | {:>10} | {:>12} | {:>12}".format( 'name', 'id', 'trainId', 'category', 'categoryId', 'hasInstances', 'ignoreInEval', "color" )))
+    # print(("    " + ('-' * 98)))
     for label in labels:
-        print(("    {:>21} | {:>3} | {:>7} | {:>14} | {:>10} | {:>12} | {:>12}".format( label.name, label.id, label.trainId, label.category, label.categoryId, label.hasInstances, label.ignoreInEval, label.color )))
-    print("")
+    #     print(("    {:>21} | {:>3} | {:>7} | {:>14} | {:>10} | {:>12} | {:>12}".format( label.name, label.id, label.trainId, label.category, label.categoryId, label.hasInstances, label.ignoreInEval, label.color )))
+        print (str(label.color))
+    # print("")
 
     # print("Example usages:")
 

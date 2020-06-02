@@ -91,7 +91,7 @@ def setup_loaders(args):
     
     train_sampler = None
     val_sampler = None
-
+    debug_sample = train_set[3000]
     train_loader = DataLoader(train_set, batch_size=args.train_batch_size,
                               num_workers=args.num_workers, shuffle=(train_sampler is None), drop_last=True, sampler = train_sampler)
     val_loader = DataLoader(val_set, batch_size=args.val_batch_size,

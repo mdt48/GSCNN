@@ -91,7 +91,7 @@ def prep_experiment(args, parser):
     exp_name = make_exp_name(args, parser)
     args.exp_path = os.path.join(ckpt_path, args.exp, exp_name)
     args.tb_exp_path = os.path.join(tb_path, args.exp, exp_name)
-    args.ngpu = 1
+    args.ngpu = torch.cuda.device_count()
     args.date_str = str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
     args.best_record = {'epoch': -1, 'iter': 0, 'val_loss': 1e10, 'acc': 0,
                         'acc_cls': 0, 'mean_iu': 0, 'fwavacc': 0}
