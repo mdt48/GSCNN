@@ -10,3 +10,4 @@ logs/
 .vscode/
 *.txt
 checkpoints/
+.vscode/
