@@ -275,10 +275,10 @@ class ade20k(data.Dataset):
         # for k, v in ade20k_labels.trainId2color.items():
         #     mask_copy[mask==v] = k
 
-        for i in mask_copy:
-            for idx, j in np.ndenumerate(i):
-                if j == 0:
-                    i[idx] = 1
+        # for i in mask_copy:
+        #     for idx, j in np.ndenumerate(i):
+        #         if j == 0:
+        #             i[idx] = 1
 
         # mask_copy = np.ones_like(mask)
 

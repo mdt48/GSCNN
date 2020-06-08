@@ -11,3 +11,7 @@ logs/
 *.txt
 checkpoints/
 .vscode/
+datasets/__pycache__/__init__.cpython-37.pyc
+datasets/__pycache__/ade20k.cpython-37.pyc
+test.png
+ms-python-insiders.vsix
