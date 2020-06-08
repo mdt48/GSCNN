@@ -69,7 +69,6 @@ def find_match(cities, mode):
     
     from  builtins import any as b_any
     result = []
-    result_seg = []
     import os
     import subprocess
     if os.path.exists("./tp.pickle"):
@@ -197,8 +196,7 @@ def make_dataset(quality, mode, maxSkip=0, fine_coarse_mult=6, cv_split=0):
         for mode in modes:
             if mode == 'test':
                 cv_splits = make_test_split(img_dir_name)
-                items = add_items(items, cv_splits, img_path, mask_path,
-                      mask_postfix)
+                items = add_items(items, cv_splits, img_path, mask_path,mask_postfix)
             else:
                 logging.info('{} fine cities: '.format(mode) + str(len(cv_splits[cv_split][mode])))
 
@@ -277,12 +275,12 @@ class ade20k(data.Dataset):
         # for k, v in ade20k_labels.trainId2color.items():
         #     mask_copy[mask==v] = k
 
-        # for i in mask_copy:
-        #     for idx, j in np.ndenumerate(i):
-        #         if j == 0:
-        #             i[idx] = 1
+        for i in mask_copy:
+            for idx, j in np.ndenumerate(i):
+                if j == 0:
+                    i[idx] = 1
 
-        mask_copy = np.ones_like(mask)
+        # mask_copy = np.ones_like(mask)
 
         if self.eval_mode:
             return self._eval_get_item(img, mask_copy, self.eval_scales, self.eval_flip), img_name
@@ -298,8 +296,6 @@ class ade20k(data.Dataset):
             mask = self.target_transform(mask)
 
         _edgemap = mask.numpy()
-        # _edgemap = _edgemap[:, :, 0]
-        # print(_edgemap.shape)
         _edgemap = edge_utils.mask_to_onehot(_edgemap, num_classes)
         _edgemap = edge_utils.onehot_to_binary_edges(_edgemap, 2, num_classes)
         edgemap = torch.from_numpy(_edgemap).float()
@@ -313,7 +309,6 @@ class ade20k(data.Dataset):
             mask_img = colorize_mask(np.array(mask))
             img.save(out_img_fn)
             mask_img.save(out_msk_fn)
-
         return img, mask, edgemap, img_name
 
     def __len__(self):

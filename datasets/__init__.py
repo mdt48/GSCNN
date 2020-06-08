@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 def setup_loaders(args):
     if args.dataset == 'ade20k':
         args.dataset_cls = ade20k
-        args.train_batch_size = args.bs_mult * args.ngpu
+        args.train_batch_size = args.bs_mult * args.ngpu        # args.train_batch_size = 1
         if args.bs_mult_val > 0:
             args.val_batch_size = args.bs_mult_val * args.ngpu
         else:

@@ -190,10 +190,9 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, writer):
             print('forward done')
 
         optimizer.zero_grad()
-        print(i)
         main_loss = None
         loss_dict = None
-        if args.joint_edgeseg_loss:
+        if args.joint_edgeseg_loss:       
             loss_dict = net(inputs, gts=(mask, edge))
             if args.seg_weight > 0:
                 log_seg_loss = loss_dict['seg_loss'].mean().clone().detach_()
