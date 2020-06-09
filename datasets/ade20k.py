@@ -75,21 +75,15 @@ def find_match(cities, mode):
         with open("tp.pickle", "rb") as fp:
             result = pickle.load(fp)
     else:
-        # segm_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/" + c
         segm_path = "../semantic-segmentation-pytorch/data/ADEChallengeData2016/annotations/" + c
-        segm_imgs = [f.as_posix() for f in Path(segm_path).glob("**/*.png") ]
+        segm_imgs = [f.as_posix() for f in Path(segm_path).glob("**/*.png")]
         for img in range(len(cities)): 
             fn = cities[img]
             p = os.path.split(fn)[0]
-            fn = os.path.basename(fn)
-            fn = fn.split(".")[0]
-            fn = fn + ".png" 
-            q = 0
-            match = os.path.join(segm_path, fn)
-            if os.path.exists(match):
-                q = q+1
-                tp = (cities[img], match)
-                result.append(tp)
+            fn = os.path.basename(fn).split(".")[0] 
+            match = os.path.join(segm_path, fn+ ".png")
+            result.append((cities[img], match))
+        
         with open("tp.pickle", "wb+") as fp:   #Pickling   
             pickle.dump(result, fp)
 
@@ -112,10 +106,10 @@ def make_cv_splits(img_dir_name):
         with open("val.pickle", "rb") as fp:
             v = pickle.load(fp)
     else:
-        train_path = "../semantic-segmentation-pytorch/data/ADEChallengeData2016/images/training/"
-        v_path = "../semantic-segmentation-pytorch/data/ADEChallengeData2016/images/validation/"
-        # train_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/training"
-        # v_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/validation"
+        # train_path = "../semantic-segmentation-pytorch/data/ADEChallengeData2016/images/training/"
+        # v_path = "../semantic-segmentation-pytorch/data/ADEChallengeData2016/images/validation/"
+        train_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/training"
+        v_path = "/pless_nfs/home/mdt_/GSCNN/ADE20K_2016_07_26/images/validation"
         t = [f.as_posix() for f in Path(train_path).glob("**/*.jpg")]
         v = [f.as_posix() for f in Path(v_path).glob("**/*.jpg")]
         with open("tr.pickle", "wb+") as fp:    
@@ -268,19 +262,10 @@ class ade20k(data.Dataset):
         img_name = os.path.splitext(os.path.basename(img_path))[0]
 
         mask = np.array(mask)
-        # mask_copy = np.zeros(mask.shape[:2])
         mask_copy = mask.copy()
-        for k, v in id_to_trainid.items():
-            mask_copy[mask == k] = v
-        # for k, v in ade20k_labels.trainId2color.items():
-        #     mask_copy[mask==v] = k
-
-        # for i in mask_copy:
-        #     for idx, j in np.ndenumerate(i):
-        #         if j == 0:
-        #             i[idx] = 1
-
-        # mask_copy = np.ones_like(mask)
+        
+        for k, v in ade20k_labels.trainId2color.items():
+            mask_copy[mask==v] = k
 
         if self.eval_mode:
             return self._eval_get_item(img, mask_copy, self.eval_scales, self.eval_flip), img_name
