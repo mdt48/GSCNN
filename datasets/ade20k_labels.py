@@ -125,6 +125,7 @@ label2trainid   = { label.id      : label.trainId for label in labels   }
 # trainId to label object
 trainId2name   = { label.trainId : label.name for label in labels   }
 trainId2color  = { label.trainId : label.color for label in labels      }
+id_to_trainid  = { label.id : label.trainId for label in labels      }
 # category to list of label objects
 category2labels = {}
 for label in labels:

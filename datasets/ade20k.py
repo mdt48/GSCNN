@@ -264,7 +264,9 @@ class ade20k(data.Dataset):
         mask = np.array(mask)
         mask_copy = mask.copy()
         
-        for k, v in ade20k_labels.trainId2color.items():
+        # for k, v in ade20k_labels.trainId2color.items():
+        #     mask_copy[mask==v] = k
+        for k, v in ade20k_labels.id_to_trainid.items():
             mask_copy[mask==v] = k
 
         if self.eval_mode:
